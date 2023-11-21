@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:latest
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 20s
+      retries: 10
+
+  zookeeper:
+    image: zookeeper:3.5.5
+    restart: always
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    expose:
+      - "2181"
+    environment:
+      - ZOO_MY_ID=1
+  kafka:
+    image: wurstmeister/kafka:2.12-2.2.1
+    restart: always
+    container_name: kafka
+    env_file:
+      - .env
+    ports:
+        - "9090:9090"
+    depends_on:
+        - zookeeper
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: always
+volumes:
+  db_data:
